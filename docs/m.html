@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Machine history · O-MMR</title>
+<style>
+:root{--bg:#f4f6f8;--card:#fff;--ink:#1f2933;--grey:#5b6770;--line:#d9dee3;--hero:#c8102e;--hero2:#8e0b22;--soft:#fbe9ec}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1318;--card:#1a2129;--ink:#e8edf2;--grey:#9aa7b3;--line:#2b3640;--soft:#2b151b}}
+body.alt{--hero:#0f4c9a;--hero2:#0a3a78;--soft:#e6eef8}
+@media (prefers-color-scheme:dark){body.alt{--soft:#142338}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.wrap{max-width:560px;margin:0 auto;padding-bottom:28px}
+.hero{background:linear-gradient(160deg,var(--hero),var(--hero2));color:#fff;padding:20px 18px 24px;border-radius:0 0 26px 26px}
+.top{display:flex;justify-content:space-between;align-items:center;font-size:12px;letter-spacing:.06em;opacity:.92}
+.live{display:flex;align-items:center;gap:6px}.live i{width:8px;height:8px;border-radius:50%;background:#7ed957;display:inline-block}
+h1{margin:14px 0 2px;font-size:30px;line-height:1.15;font-weight:800}
+.sub{font-size:15px;opacity:.95}
+.chips{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.chip{background:rgba(255,255,255,.2);border-radius:999px;padding:4px 12px;font-size:13px;font-weight:600}
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;padding:16px 16px 4px}
+.st{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 8px;text-align:center}
+.st b{display:block;font-size:22px;line-height:1.2}.st span{font-size:12px;color:var(--grey)}
+.st b.t{font-size:16px;line-height:26px}
+.filters{display:flex;gap:8px;overflow-x:auto;padding:12px 16px 4px;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.f{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:8px 14px;font:600 14px system-ui;cursor:pointer}
+.f.on{background:var(--hero);border-color:var(--hero);color:#fff}
+.list{margin:10px 16px 0;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:0 14px}
+.hd{display:grid;grid-template-columns:34px 1fr auto;gap:8px;font-size:12px;color:var(--grey);padding:10px 0;border-bottom:1px solid var(--line);font-weight:600}
+.mo{font-size:12px;font-weight:700;color:var(--grey);padding:14px 0 4px;letter-spacing:.04em;text-transform:uppercase}
+.r{display:grid;grid-template-columns:34px 1fr auto;gap:8px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
+.r:last-child{border-bottom:0}
+.n{font-size:13px;color:var(--grey)}
+.p{font-size:16px;font-weight:700}.d{font-size:13px;color:var(--grey)}
+.by{font-size:13px;font-weight:600;background:var(--soft);color:var(--hero);border-radius:999px;padding:3px 11px;white-space:nowrap}
+.more{display:block;width:calc(100% - 32px);margin:12px 16px 0;padding:12px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:600 15px system-ui;cursor:pointer}
+.foot{text-align:center;font-size:12px;color:var(--grey);margin:16px 16px 0}
+.msg{margin:40px 20px;text-align:center;color:var(--grey);font-size:16px}
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="msg">Loading...</div></div>
+<script>
+var PROJECT="glue-control-36c37";
+var MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+var T=new URLSearchParams(location.search).get("t")||"";
+var app=document.getElementById("app");
+var H=[],cur="All",all=false;
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]})}
+function two(n){return (n<10?"0":"")+n}
+function fmt(d){return d.getDate()+" "+MON[d.getMonth()]+" "+d.getFullYear()+" · "+two(d.getHours())+":"+two(d.getMinutes())}
+function sv(f){if(!f)return "";return f.stringValue!==undefined?f.stringValue:(f.integerValue!==undefined?f.integerValue:"")}
+function msg(t){app.innerHTML='<div class="msg">'+esc(t)+'</div>'}
+function load(){
+  if(!/^[a-z0-9]{12,40}$/.test(T)){msg("This QR code is not valid.");return}
+  fetch("https://firestore.googleapis.com/v1/projects/"+PROJECT+"/databases/(default)/documents/publicView/"+T)
+  .then(function(r){if(!r.ok)throw new Error(r.status);return r.json()})
+  .then(function(j){build(j.fields||{})})
+  .catch(function(e){msg(String(e.message)==="404"||String(e.message)==="403"?"This QR code is not valid anymore. Ask the maintenance team for the new label.":"Could not load the history. Check your internet connection and try again.")});
+}
+function build(f){
+  var arr=(f.history&&f.history.arrayValue&&f.history.arrayValue.values)||[];
+  H=arr.map(function(v){var m=(v.mapValue&&v.mapValue.fields)||{};return {ts:Number(sv(m.ts)),part:sv(m.part),by:sv(m.by),reason:sv(m.reason)}})
+     .sort(function(a,b){return b.ts-a.ts});
+  H.forEach(function(r,i){r.n=H.length-i});
+  var loc=sv(f.location);
+  if(/7/.test(loc))document.body.className="alt";
+  document.title=sv(f.title)+" · history";
+  var cnt={};H.forEach(function(r){cnt[r.part]=(cnt[r.part]||0)+1});
+  var top=Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a]})[0]||"-";
+  var last=H.length?(new Date(H[0].ts)):null;
+  var upd=Number(sv(f.updatedMs));
+  var h='<div class="hero"><div class="top"><span>O-MMR · MACHINE HISTORY</span><span class="live"><i></i>Live</span></div>'
+   +'<h1>'+esc(sv(f.title))+'</h1><div class="sub">'+esc(sv(f.name))+'</div><div class="chips">'
+   +(sv(f.serial)?'<span class="chip">'+esc(sv(f.serial))+'</span>':'')+(loc?'<span class="chip">'+esc(loc)+'</span>':'')+'</div></div>'
+   +'<div class="stats"><div class="st"><b>'+H.length+'</b><span>Changes</span></div>'
+   +'<div class="st"><b class="t">'+(last?last.getDate()+" "+MON[last.getMonth()]:"-")+'</b><span>Last change</span></div>'
+   +'<div class="st"><b class="t">'+esc(top)+'</b><span>Most changed</span></div></div>'
+   +'<div class="filters" id="fl"></div><div id="ls"></div><div id="mr"></div>'
+   +'<div class="foot">Read only · updates automatically'+(upd?' · last sync '+fmt(new Date(upd)):'')+'</div>';
+  app.innerHTML=h;
+  fl();render();
+}
+function fl(){
+  var parts=[];H.forEach(function(r){if(parts.indexOf(r.part)<0)parts.push(r.part)});
+  if(parts.length<2){document.getElementById("fl").style.display="none";return}
+  var h="";["All"].concat(parts.sort()).forEach(function(p){h+='<button class="f'+(p===cur?' on':'')+'" data-p="'+esc(p)+'">'+esc(p)+'</button>'});
+  var el=document.getElementById("fl");el.innerHTML=h;
+  [].forEach.call(el.querySelectorAll("button"),function(b){b.onclick=function(){cur=b.getAttribute("data-p");all=false;fl();render()}});
+}
+function render(){
+  var f=H.filter(function(r){return cur==="All"||r.part===cur});
+  var show=all?f:f.slice(0,12);
+  var h='<div class="list"><div class="hd"><span>No</span><span>Part and date</span><span>Changed by</span></div>';
+  if(!f.length)h+='<div class="msg" style="margin:20px 0">No part change recorded yet.</div>';
+  var lm="";
+  show.forEach(function(r){
+    var d=new Date(r.ts),m=MON[d.getMonth()]+" "+d.getFullYear();
+    if(m!==lm){h+='<div class="mo">'+m+'</div>';lm=m}
+    h+='<div class="r"><span class="n">'+r.n+'</span><span><span class="p">'+esc(r.part)+'</span><br><span class="d">'+fmt(d)+(r.reason?' · '+esc(r.reason):'')+'</span></span><span class="by">'+esc(r.by||"-")+'</span></div>';
+  });
+  h+='</div>';
+  document.getElementById("ls").innerHTML=h;
+  var mr=document.getElementById("mr");
+  if(f.length>12){mr.innerHTML='<button class="more" id="mb">'+(all?'Show less':'Show all '+f.length+' changes')+'</button>';document.getElementById("mb").onclick=function(){all=!all;render()}}
+  else mr.innerHTML="";
+}
+load();
+</script>
+</body>
+</html>
